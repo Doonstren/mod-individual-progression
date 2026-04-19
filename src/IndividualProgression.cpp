@@ -665,16 +665,17 @@ void IndividualProgression::CleanUpVanillaPvpTitles(Player* player)
 		}
 	}
 
+	/*
 	for (int8_t i = 13; i > -1; --i)
-    {
-		uint32_t achievementId = AchievementData[i].TitleId[teamId];
+	{
+	        uint32_t achievementId = AchievementData[i].TitleId[teamId];
 
-		if (highestRank == i || !player->HasAchieved(achievementId))
-			continue;
+	        if (highestRank == i || !player->HasAchieved(achievementId))
+	                continue;
 
-		RemovePlayerAchievement(playerGUID, achievementId);
-    }
-
+	        RemovePlayerAchievement(playerGUID, achievementId);
+	}
+	*/
 	// remove all hidden pvp quests
     for (uint8 i = 1; i <= 14; ++i)
     {
