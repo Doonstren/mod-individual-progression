@@ -19,6 +19,7 @@ public:
             { "set",    HandleSetIndividualProgressionCommand,    SEC_GAMEMASTER,    Console::Yes },
             { "tele",   HandleTeleIndividualProgressionCommand,   SEC_GAMEMASTER,    Console::Yes },
             { "setbot", HandleSetBotIndividualProgressionCommand, SEC_GAMEMASTER,    Console::Yes },
+            { "setrep", HandleSetRepIndividualProgressionCommand, SEC_GAMEMASTER,    Console::Yes },
         };
 
         static ChatCommandTable commandTable =
@@ -173,7 +174,181 @@ public:
             sIndividualProgression->checkIPPhasing(member, currentArea);
         }
 
-        handler->PSendSysMessage("Updated Progression Level for all bots = |cff00ffff{}|r", currentState);
+        handler->PSendSysMessage("Updated Progression Level for all RND bots = |cff00ffff{}|r", currentState);
+        return true;
+    }
+
+    static bool HandleSetRepIndividualProgressionCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        uint32 accountId = handler->GetSession()->GetAccountId();
+        
+        if (!player || !accountId)
+            return false;
+
+        Group* group = player->GetGroup();
+        
+        if (!sIndividualProgression->EnableSetRepCommand)
+        {
+            handler->SendSysMessage("The .ip setrep command is currently disabled.");
+            return false;
+        }
+        
+        if (!group)
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You need to be in a group to use this command.");
+            return false;
+        }
+
+        static constexpr std::array<uint32, 10> Shared_Honored_Checklist =
+        {
+            910,  // Brood of Nozdormu
+            932,  // The Aldor
+            933,  // The Consortium
+            934,  // The Scryers
+            942,  // Cenarion Expedition
+            989,  // Keepers of Time
+            1011, // Lower City
+            1073, // The Kalu'ak
+            1090, // Kirin Tor
+            1098  // Knights of the Ebon Blade
+        };
+
+        static constexpr std::array<uint32, 10> Shared_Friendly_Checklist =
+        {
+            59,   // Thorium Brotherhood
+            529,  // Argent Dawn
+            609,  // Cenarion Circle
+            935,  // The Sha'tar
+            967,  // The Violet Eye
+            990,  // The Scale of the Sands
+            1012, // Ashtongue Deathsworn
+            1031, // Sha'tari Skyguard
+            1091, // The Wyrmrest Accord
+            1119  // The Sons of Hodir
+        };
+
+        static constexpr std::array<uint32, 10> Shared_Neutral_Checklist =
+        {
+            270,  // Zandalar Tribe
+            349,  // Ravenholdt
+            576,  // Timbermaw Hold
+            749,  // Hydraxian Waterlords
+            909,  // Darkmoon Faire
+            970,  // Sporeggar
+            1015, // Netherwing
+            1038, // Ogri'la
+            1077, // Shattered Sun Offensive
+            1156  // The Ashen Verdict
+        };
+
+        static constexpr std::array<uint32, 4> Alliance_Honored_Checklist =
+        {
+            946,  // Honor Hold
+            978,  // Kurenai
+            1037, // Alliance Vanguard
+            1094  // The Silver Covenant
+        };
+
+        static constexpr std::array<uint32, 4> Alliance_Neutral_Checklist =
+        {
+            509,  // The League of Arathor
+            589,  // Wintersaber Trainers
+            730,  // Stormpike Guard
+            890   // Silverwing Sentinels
+        };
+
+        static constexpr std::array<uint32, 4> Horde_Honored_Checklist =
+        {
+            941,  // Mag'har
+            947,  // Thrallmar
+            1052, // Horde Expedition
+            1124  // The Sunreavers
+        };
+
+        static constexpr std::array<uint32, 4> Horde_Neutral_Checklist =
+        {
+            510,  // The Defilers
+            729,  // Frostwolf Clan
+            889,  // Warsong Outriders
+            922   // Tranquillien
+        };
+
+        std::regex sharedFactionIdsRegex(sIndividualProgression->sharedFactionIdsRegex);
+        TeamId teamId = player->GetTeamId(true);
+
+        for (uint32 factionId : Shared_Honored_Checklist)
+        {
+            if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_HONORED)
+                continue;
+
+            if ((factionId == 910 || factionId == 932 || factionId == 934) && player->GetReputationRank(factionId) < REP_HONORED) // Skip if not Honored
+                continue;
+
+            if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+        }
+
+        for (uint32 factionId : Shared_Friendly_Checklist)
+        {
+            if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_FRIENDLY)
+                continue;
+
+            if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+        }
+
+        for (uint32 factionId : Shared_Neutral_Checklist)
+        {
+            if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_NEUTRAL)
+                continue;
+
+            if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+        }
+
+        if (teamId == TEAM_ALLIANCE)
+        {
+            for (uint32 factionId : Alliance_Honored_Checklist)
+            {
+                if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_HONORED)
+                    continue;
+
+                if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                    sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+            }
+
+            for (uint32 factionId : Alliance_Neutral_Checklist)
+            {
+                if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_NEUTRAL)
+                    continue;
+
+                if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                    sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+            }
+        }
+
+        if (teamId == TEAM_HORDE)
+        {
+            for (uint32 factionId : Horde_Honored_Checklist)
+            {
+                if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_HONORED)
+                    continue;
+
+                if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                    sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+            }
+
+            for (uint32 factionId : Horde_Neutral_Checklist)
+            {
+                if (sIndividualProgression->LimitedSetRepCommand && player->GetReputationRank(factionId) < REP_NEUTRAL)
+                    continue;
+
+                if (std::regex_match(std::to_string(factionId), sharedFactionIdsRegex))
+                    sIndividualProgression->UpdateAccountReputation(factionId, accountId, player);
+            }
+        }
+
         return true;
     }
 
